@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, TrendingUp, TrendingDown } from "lucide-react";
+import * as React from "react";
+import { Search, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -37,6 +38,8 @@ const Index = () => {
   const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [stockData, setStockData] = useState<StockData | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [countdown, setCountdown] = useState(60);
   const { toast } = useToast();
 
   const analyzeStock = async () => {
@@ -50,6 +53,7 @@ const Index = () => {
     }
 
     setLoading(true);
+    setCountdown(60);
     console.log("Analyzing stock:", symbol.toUpperCase());
 
     try {
@@ -78,6 +82,29 @@ const Index = () => {
     }
   };
 
+  // Auto-refresh effect
+  React.useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    let countdownId: NodeJS.Timeout;
+
+    if (autoRefresh && symbol && stockData) {
+      // Refresh every 60 seconds
+      intervalId = setInterval(() => {
+        analyzeStock();
+      }, 60000);
+
+      // Countdown timer
+      countdownId = setInterval(() => {
+        setCountdown((prev) => (prev > 0 ? prev - 1 : 60));
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      if (countdownId) clearInterval(countdownId);
+    };
+  }, [autoRefresh, symbol, stockData]);
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -93,24 +120,47 @@ const Index = () => {
 
         {/* Search */}
         <Card className="p-6 border-primary/20">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Enter stock symbol (e.g., AAPL, TSLA, MSFT)"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === "Enter" && analyzeStock()}
-                className="pl-10 bg-secondary border-border"
-              />
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Enter stock symbol (e.g., AAPL, TSLA, MSFT)"
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && analyzeStock()}
+                  className="pl-10 bg-secondary border-border"
+                />
+              </div>
+              <Button
+                onClick={analyzeStock}
+                disabled={loading}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {loading ? "Analyzing..." : "Analyze"}
+              </Button>
             </div>
-            <Button
-              onClick={analyzeStock}
-              disabled={loading}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {loading ? "Analyzing..." : "Analyze"}
-            </Button>
+            
+            {stockData && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={autoRefresh ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAutoRefresh(!autoRefresh)}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} />
+                    Auto-Refresh {autoRefresh ? "ON" : "OFF"}
+                  </Button>
+                  {autoRefresh && (
+                    <span className="text-sm text-muted-foreground">
+                      Next update in {countdown}s
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 

@@ -1,5 +1,3 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -62,7 +60,7 @@ Current Price: $${currentPrice.toFixed(2)}
 Price Change (last 30 min): ${priceChange.toFixed(2)}%
 
 Recent Candles (last 30 minutes):
-${recentCandles.map(c => `Time: ${c.time}, O: ${c.open?.toFixed(2)}, H: ${c.high?.toFixed(2)}, L: ${c.low?.toFixed(2)}, C: ${c.close?.toFixed(2)}, Vol: ${c.volume}`).join('\n')}
+${recentCandles.map((c: any) => `Time: ${c.time}, O: ${c.open?.toFixed(2)}, H: ${c.high?.toFixed(2)}, L: ${c.low?.toFixed(2)}, C: ${c.close?.toFixed(2)}, Vol: ${c.volume}`).join('\n')}
 
 Based on this candlestick pattern analysis, provide:
 1. A clear BUY, SELL, or HOLD recommendation
