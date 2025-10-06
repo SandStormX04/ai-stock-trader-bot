@@ -1,11 +1,159 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { Search, TrendingUp, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import StockChart from "@/components/StockChart";
+import AnalysisDisplay from "@/components/AnalysisDisplay";
+
+interface CandlestickData {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+interface Analysis {
+  recommendation: "BUY" | "SELL" | "HOLD";
+  confidence: number;
+  indicators: string[];
+  reasoning: string;
+}
+
+interface StockData {
+  symbol: string;
+  currentPrice: number;
+  priceChange: number;
+  candlestickData: CandlestickData[];
+  analysis: Analysis;
+  timestamp: string;
+}
 
 const Index = () => {
+  const [symbol, setSymbol] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [stockData, setStockData] = useState<StockData | null>(null);
+  const { toast } = useToast();
+
+  const analyzeStock = async () => {
+    if (!symbol.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a stock symbol",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    console.log("Analyzing stock:", symbol.toUpperCase());
+
+    try {
+      const { data, error } = await supabase.functions.invoke("stock-analysis", {
+        body: { symbol: symbol.toUpperCase() },
+      });
+
+      if (error) throw error;
+
+      console.log("Analysis complete:", data);
+      setStockData(data);
+
+      toast({
+        title: "Analysis Complete",
+        description: `${data.symbol} analyzed successfully`,
+      });
+    } catch (error: any) {
+      console.error("Error analyzing stock:", error);
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to analyze stock",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+            AI Stock Trader
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Real-time candlestick analysis powered by AI
+          </p>
+        </div>
+
+        {/* Search */}
+        <Card className="p-6 border-primary/20">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Enter stock symbol (e.g., AAPL, TSLA, MSFT)"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && analyzeStock()}
+                className="pl-10 bg-secondary border-border"
+              />
+            </div>
+            <Button
+              onClick={analyzeStock}
+              disabled={loading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {loading ? "Analyzing..." : "Analyze"}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Results */}
+        {stockData && (
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Price Info */}
+            <Card className="p-6 border-primary/20">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold">{stockData.symbol}</h2>
+                  <div
+                    className={`flex items-center gap-1 ${
+                      stockData.priceChange >= 0 ? "text-success" : "text-danger"
+                    }`}
+                  >
+                    {stockData.priceChange >= 0 ? (
+                      <TrendingUp className="h-5 w-5" />
+                    ) : (
+                      <TrendingDown className="h-5 w-5" />
+                    )}
+                    <span className="font-semibold">
+                      {stockData.priceChange >= 0 ? "+" : ""}
+                      {stockData.priceChange.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="text-4xl font-bold">
+                  ${stockData.currentPrice.toFixed(2)}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Last updated: {new Date(stockData.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            </Card>
+
+            {/* AI Analysis */}
+            <AnalysisDisplay analysis={stockData.analysis} />
+          </div>
+        )}
+
+        {/* Chart */}
+        {stockData && <StockChart data={stockData.candlestickData} />}
       </div>
     </div>
   );
