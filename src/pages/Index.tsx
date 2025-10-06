@@ -40,6 +40,8 @@ const Index = () => {
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [countdown, setCountdown] = useState(60);
+  const [investmentAmount, setInvestmentAmount] = useState("");
+  const [targetProfit, setTargetProfit] = useState("");
   const { toast } = useToast();
 
   const analyzeStock = async () => {
@@ -58,7 +60,11 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("stock-analysis", {
-        body: { symbol: symbol.toUpperCase() },
+        body: { 
+          symbol: symbol.toUpperCase(),
+          investmentAmount: investmentAmount ? parseFloat(investmentAmount) : undefined,
+          targetProfit: targetProfit ? parseFloat(targetProfit) : undefined,
+        },
       });
 
       if (error) throw error;
@@ -142,21 +148,54 @@ const Index = () => {
             </div>
             
             {stockData && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={autoRefresh ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setAutoRefresh(!autoRefresh)}
-                    className="gap-2"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} />
-                    Auto-Refresh {autoRefresh ? "ON" : "OFF"}
-                  </Button>
-                  {autoRefresh && (
-                    <span className="text-sm text-muted-foreground">
-                      Next update in {countdown}s
-                    </span>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Investment Amount ($)</label>
+                    <Input
+                      type="number"
+                      placeholder="e.g., 1000"
+                      value={investmentAmount}
+                      onChange={(e) => setInvestmentAmount(e.target.value)}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Target Profit ($)</label>
+                    <Input
+                      type="number"
+                      placeholder="e.g., 100"
+                      value={targetProfit}
+                      onChange={(e) => setTargetProfit(e.target.value)}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={autoRefresh ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAutoRefresh(!autoRefresh)}
+                      className="gap-2"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} />
+                      Auto-Refresh {autoRefresh ? "ON" : "OFF"}
+                    </Button>
+                    {autoRefresh && (
+                      <span className="text-sm text-muted-foreground">
+                        Next update in {countdown}s
+                      </span>
+                    )}
+                  </div>
+                  {(investmentAmount || targetProfit) && (
+                    <Button
+                      size="sm"
+                      onClick={analyzeStock}
+                      disabled={loading}
+                    >
+                      Update Analysis
+                    </Button>
                   )}
                 </div>
               </div>

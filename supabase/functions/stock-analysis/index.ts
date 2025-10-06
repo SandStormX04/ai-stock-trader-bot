@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { symbol } = await req.json()
-    console.log('Analyzing stock:', symbol)
+    const { symbol, investmentAmount, targetProfit } = await req.json()
+    console.log('Analyzing stock:', symbol, 'Investment:', investmentAmount, 'Target Profit:', targetProfit)
 
     // Fetch 1-minute interval candlestick data for the last day
     const period = '1d'
@@ -54,19 +54,34 @@ Deno.serve(async (req) => {
     const currentPrice = recentCandles[recentCandles.length - 1].close
     const priceChange = ((currentPrice - recentCandles[0].open) / recentCandles[0].open) * 100
 
+    let investmentContext = ''
+    if (investmentAmount && targetProfit) {
+      const sharesCanBuy = Math.floor(investmentAmount / currentPrice)
+      const targetPricePerShare = currentPrice + (targetProfit / sharesCanBuy)
+      const percentGainNeeded = ((targetPricePerShare - currentPrice) / currentPrice) * 100
+      investmentContext = `
+
+Investment Analysis:
+- Investment Amount: $${investmentAmount.toFixed(2)}
+- Shares Purchasable: ${sharesCanBuy}
+- Target Profit: $${targetProfit.toFixed(2)}
+- Target Price per Share: $${targetPricePerShare.toFixed(2)}
+- Gain Needed: ${percentGainNeeded.toFixed(2)}%`
+    }
+
     const prompt = `You are a stock trading analyst. Analyze this 1-minute candlestick data for ${symbol}:
 
 Current Price: $${currentPrice.toFixed(2)}
-Price Change (last 30 min): ${priceChange.toFixed(2)}%
+Price Change (last 30 min): ${priceChange.toFixed(2)}%${investmentContext}
 
 Recent Candles (last 30 minutes):
 ${recentCandles.map((c: any) => `Time: ${c.time}, O: ${c.open?.toFixed(2)}, H: ${c.high?.toFixed(2)}, L: ${c.low?.toFixed(2)}, C: ${c.close?.toFixed(2)}, Vol: ${c.volume}`).join('\n')}
 
-Based on this candlestick pattern analysis, provide:
-1. A clear BUY, SELL, or HOLD recommendation
+Based on this candlestick pattern analysis${investmentAmount && targetProfit ? ' and the investment goals' : ''}, provide:
+1. A clear BUY, SELL, or HOLD recommendation${investmentAmount && targetProfit ? ' considering whether the target profit is realistic given current market conditions' : ''}
 2. Confidence level (0-100%)
 3. Key technical indicators you observe
-4. Brief reasoning (2-3 sentences)
+4. Brief reasoning (2-3 sentences)${investmentAmount && targetProfit ? ' including assessment of the target profit feasibility' : ''}
 
 Format your response as JSON:
 {
