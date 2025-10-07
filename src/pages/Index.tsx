@@ -329,7 +329,7 @@ const Index = () => {
                         size="sm"
                         onClick={handleBought}
                         disabled={loading || !investmentAmount || !targetProfit}
-                        className="bg-success hover:bg-success/90"
+                        className="bg-white text-black hover:bg-white/90 border-2 border-primary font-semibold"
                       >
                         Bought
                       </Button>
