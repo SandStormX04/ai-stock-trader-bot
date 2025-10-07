@@ -42,6 +42,7 @@ const Index = () => {
   const [countdown, setCountdown] = useState(60);
   const [investmentAmount, setInvestmentAmount] = useState("");
   const [targetProfit, setTargetProfit] = useState("");
+  const [percentLoss, setPercentLoss] = useState("");
   const [boughtMode, setBoughtMode] = useState(false);
   const [initialPrice, setInitialPrice] = useState(0);
   const { toast } = useToast();
@@ -93,10 +94,10 @@ const Index = () => {
   };
 
   const handleBought = () => {
-    if (!stockData || !investmentAmount || !targetProfit) {
+    if (!stockData || !investmentAmount || !targetProfit || !percentLoss) {
       toast({
         title: "Error",
-        description: "Please enter investment amount and target profit",
+        description: "Please enter investment amount, target profit, and percent loss",
         variant: "destructive",
       });
       return;
@@ -141,47 +142,44 @@ const Index = () => {
     };
   }, [autoRefresh, symbol, stockData, boughtMode]);
 
-  // Calculate if target profit is reached
+  // Calculate if target profit is reached or loss limit hit
   const calculateAction = () => {
-    if (!stockData || !boughtMode || !investmentAmount || !targetProfit) return "HOLD";
+    if (!stockData || !boughtMode || !investmentAmount || !targetProfit || !percentLoss) return "HOLD";
     
     const invested = parseFloat(investmentAmount);
     const target = parseFloat(targetProfit);
+    const lossPercent = parseFloat(percentLoss);
     const sharesOwned = Math.floor(invested / initialPrice);
     const currentValue = sharesOwned * stockData.currentPrice;
     const currentProfit = currentValue - invested;
+    const currentLossPercent = ((initialPrice - stockData.currentPrice) / initialPrice) * 100;
     
-    // Target reached - sell with green flash
+    // Target profit reached
     if (currentProfit >= target) {
-      return "SELL_GREEN";
+      return "SELL_PROFIT";
     }
     
-    // AI predicts decline - sell with red flash
-    if (stockData.analysis.recommendation === "SELL") {
-      return "SELL_RED";
+    // Loss limit reached
+    if (currentLossPercent >= lossPercent) {
+      return "SELL_LOSS";
     }
     
     return "HOLD";
   };
 
   const action = calculateAction();
-  const shouldFlash = action.startsWith("SELL");
 
   // Bought Mode View
   if (boughtMode && stockData) {
     return (
-      <div className={`min-h-screen flex flex-col items-center justify-center p-4 transition-colors duration-500 ${
-        action === "SELL_GREEN" ? "animate-pulse bg-success/20" : 
-        action === "SELL_RED" ? "animate-pulse bg-danger/20" : 
-        "bg-background"
-      }`}>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
         <div className="text-center space-y-8">
           <div className="space-y-4">
             <h1 className="text-6xl md:text-8xl font-bold">
-              {action.startsWith("SELL") ? (
-                <span className={action === "SELL_GREEN" ? "text-success" : "text-danger"}>
-                  SELL
-                </span>
+              {action === "SELL_PROFIT" ? (
+                <span className="text-success">SELL, PROFIT</span>
+              ) : action === "SELL_LOSS" ? (
+                <span className="text-danger">SELL, LOSS</span>
               ) : (
                 <span className="text-primary">HOLD</span>
               )}
@@ -277,7 +275,7 @@ const Index = () => {
             
             {stockData && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Investment Amount ($)</label>
                     <Input
@@ -295,6 +293,16 @@ const Index = () => {
                       placeholder="e.g., 100"
                       value={targetProfit}
                       onChange={(e) => setTargetProfit(e.target.value)}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Percent Loss (%)</label>
+                    <Input
+                      type="number"
+                      placeholder="e.g., 5"
+                      value={percentLoss}
+                      onChange={(e) => setPercentLoss(e.target.value)}
                       className="bg-secondary border-border"
                     />
                   </div>
@@ -316,7 +324,7 @@ const Index = () => {
                       </span>
                     )}
                   </div>
-                  {(investmentAmount || targetProfit) && (
+                  {(investmentAmount || targetProfit || percentLoss) && (
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -328,7 +336,7 @@ const Index = () => {
                       <Button
                         size="sm"
                         onClick={handleBought}
-                        disabled={loading || !investmentAmount || !targetProfit}
+                        disabled={loading || !investmentAmount || !targetProfit || !percentLoss}
                         className="bg-white text-black hover:bg-white/90 border-2 border-primary font-semibold"
                       >
                         Bought
