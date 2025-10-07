@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { symbol, investmentAmount, targetProfit } = await req.json()
-    console.log('Analyzing stock:', symbol, 'Investment:', investmentAmount, 'Target Profit:', targetProfit)
+    const { symbol, investmentAmount, targetProfit, boughtMode, initialPrice } = await req.json()
+    console.log('Analyzing stock:', symbol, 'Investment:', investmentAmount, 'Target Profit:', targetProfit, 'Bought Mode:', boughtMode)
 
     // Fetch 1-minute interval candlestick data for the last day
     const period = '1d'
@@ -56,36 +56,70 @@ Deno.serve(async (req) => {
 
     let investmentContext = ''
     if (investmentAmount && targetProfit) {
-      const sharesCanBuy = Math.floor(investmentAmount / currentPrice)
-      const targetPricePerShare = currentPrice + (targetProfit / sharesCanBuy)
+      const priceToUse = boughtMode && initialPrice ? initialPrice : currentPrice
+      const sharesOwned = Math.floor(investmentAmount / priceToUse)
+      const targetPricePerShare = priceToUse + (targetProfit / sharesOwned)
       const percentGainNeeded = ((targetPricePerShare - currentPrice) / currentPrice) * 100
-      investmentContext = `
+      
+      if (boughtMode && initialPrice) {
+        const currentValue = sharesOwned * currentPrice
+        const currentProfit = currentValue - investmentAmount
+        const profitPercent = (currentProfit / investmentAmount) * 100
+        
+        investmentContext = `
+
+ACTIVE POSITION (BOUGHT MODE - BE EXTREMELY CAREFUL):
+- Shares Owned: ${sharesOwned}
+- Entry Price: $${initialPrice.toFixed(2)}
+- Current Price: $${currentPrice.toFixed(2)}
+- Investment: $${investmentAmount.toFixed(2)}
+- Current Value: $${currentValue.toFixed(2)}
+- Current Profit/Loss: $${currentProfit.toFixed(2)} (${profitPercent.toFixed(2)}%)
+- Target Profit: $${targetProfit.toFixed(2)}
+- Target Price: $${targetPricePerShare.toFixed(2)}
+- Gain Still Needed: ${percentGainNeeded.toFixed(2)}%
+
+CRITICAL: User has real money invested. Analyze carefully whether to HOLD or SELL.`
+      } else {
+        investmentContext = `
 
 Investment Analysis:
 - Investment Amount: $${investmentAmount.toFixed(2)}
-- Shares Purchasable: ${sharesCanBuy}
+- Shares Purchasable: ${sharesOwned}
 - Target Profit: $${targetProfit.toFixed(2)}
 - Target Price per Share: $${targetPricePerShare.toFixed(2)}
 - Gain Needed: ${percentGainNeeded.toFixed(2)}%`
+      }
     }
+
+    const modeContext = boughtMode 
+      ? `
+
+⚠️ BOUGHT MODE ACTIVE ⚠️
+The user has ALREADY INVESTED real money in this position. Your recommendation should ONLY be HOLD or SELL.
+- If target profit is reached or close, recommend SELL
+- If you detect strong bearish signals that suggest the stock won't reach the target, recommend SELL to minimize losses
+- Otherwise, recommend HOLD
+Be VERY CAREFUL and CONSERVATIVE. Provide high confidence (80-95%) for clear signals.`
+      : '';
 
     const prompt = `You are a stock trading analyst. Analyze this 1-minute candlestick data for ${symbol}:
 
 Current Price: $${currentPrice.toFixed(2)}
-Price Change (last 30 min): ${priceChange.toFixed(2)}%${investmentContext}
+Price Change (last 30 min): ${priceChange.toFixed(2)}%${investmentContext}${modeContext}
 
 Recent Candles (last 30 minutes):
 ${recentCandles.map((c: any) => `Time: ${c.time}, O: ${c.open?.toFixed(2)}, H: ${c.high?.toFixed(2)}, L: ${c.low?.toFixed(2)}, C: ${c.close?.toFixed(2)}, Vol: ${c.volume}`).join('\n')}
 
 Based on this candlestick pattern analysis${investmentAmount && targetProfit ? ' and the investment goals' : ''}, provide:
-1. A clear BUY, SELL, or HOLD recommendation${investmentAmount && targetProfit ? ' considering whether the target profit is realistic given current market conditions' : ''}
-2. Confidence level (0-100%)
+1. A clear ${boughtMode ? 'HOLD or SELL' : 'BUY, SELL, or HOLD'} recommendation${investmentAmount && targetProfit ? ' considering whether the target profit is realistic given current market conditions' : ''}
+2. Confidence level (${boughtMode ? '80-95% - be precise and confident' : '0-100%'})
 3. Key technical indicators you observe
 4. Brief reasoning (2-3 sentences)${investmentAmount && targetProfit ? ' including assessment of the target profit feasibility' : ''}
 
 Format your response as JSON:
 {
-  "recommendation": "BUY" | "SELL" | "HOLD",
+  "recommendation": "${boughtMode ? 'HOLD" | "SELL' : 'BUY" | "SELL" | "HOLD'}",
   "confidence": number,
   "indicators": string[],
   "reasoning": string

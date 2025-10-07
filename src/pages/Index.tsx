@@ -42,6 +42,8 @@ const Index = () => {
   const [countdown, setCountdown] = useState(60);
   const [investmentAmount, setInvestmentAmount] = useState("");
   const [targetProfit, setTargetProfit] = useState("");
+  const [boughtMode, setBoughtMode] = useState(false);
+  const [initialPrice, setInitialPrice] = useState(0);
   const { toast } = useToast();
 
   const analyzeStock = async () => {
@@ -55,7 +57,7 @@ const Index = () => {
     }
 
     setLoading(true);
-    setCountdown(60);
+    setCountdown(boughtMode ? 10 : 60);
     console.log("Analyzing stock:", symbol.toUpperCase());
 
     try {
@@ -64,6 +66,8 @@ const Index = () => {
           symbol: symbol.toUpperCase(),
           investmentAmount: investmentAmount ? parseFloat(investmentAmount) : undefined,
           targetProfit: targetProfit ? parseFloat(targetProfit) : undefined,
+          boughtMode: boughtMode,
+          initialPrice: boughtMode ? initialPrice : undefined,
         },
       });
 
@@ -88,20 +92,46 @@ const Index = () => {
     }
   };
 
+  const handleBought = () => {
+    if (!stockData || !investmentAmount || !targetProfit) {
+      toast({
+        title: "Error",
+        description: "Please enter investment amount and target profit",
+        variant: "destructive",
+      });
+      return;
+    }
+    setBoughtMode(true);
+    setInitialPrice(stockData.currentPrice);
+    setAutoRefresh(true);
+    setCountdown(10);
+  };
+
+  const handleSold = () => {
+    setBoughtMode(false);
+    setAutoRefresh(false);
+    setInitialPrice(0);
+    toast({
+      title: "Position Closed",
+      description: "Stock sold successfully",
+    });
+  };
+
   // Auto-refresh effect
   React.useEffect(() => {
     let intervalId: NodeJS.Timeout;
     let countdownId: NodeJS.Timeout;
 
     if (autoRefresh && symbol && stockData) {
-      // Refresh every 60 seconds
+      const refreshInterval = boughtMode ? 10000 : 60000;
+      const maxCountdown = boughtMode ? 10 : 60;
+      
       intervalId = setInterval(() => {
         analyzeStock();
-      }, 60000);
+      }, refreshInterval);
 
-      // Countdown timer
       countdownId = setInterval(() => {
-        setCountdown((prev) => (prev > 0 ? prev - 1 : 60));
+        setCountdown((prev) => (prev > 0 ? prev - 1 : maxCountdown));
       }, 1000);
     }
 
@@ -109,8 +139,106 @@ const Index = () => {
       if (intervalId) clearInterval(intervalId);
       if (countdownId) clearInterval(countdownId);
     };
-  }, [autoRefresh, symbol, stockData]);
+  }, [autoRefresh, symbol, stockData, boughtMode]);
 
+  // Calculate if target profit is reached
+  const calculateAction = () => {
+    if (!stockData || !boughtMode || !investmentAmount || !targetProfit) return "HOLD";
+    
+    const invested = parseFloat(investmentAmount);
+    const target = parseFloat(targetProfit);
+    const sharesOwned = Math.floor(invested / initialPrice);
+    const currentValue = sharesOwned * stockData.currentPrice;
+    const currentProfit = currentValue - invested;
+    
+    // Target reached - sell with green flash
+    if (currentProfit >= target) {
+      return "SELL_GREEN";
+    }
+    
+    // AI predicts decline - sell with red flash
+    if (stockData.analysis.recommendation === "SELL") {
+      return "SELL_RED";
+    }
+    
+    return "HOLD";
+  };
+
+  const action = calculateAction();
+  const shouldFlash = action.startsWith("SELL");
+
+  // Bought Mode View
+  if (boughtMode && stockData) {
+    return (
+      <div className={`min-h-screen flex flex-col items-center justify-center p-4 transition-colors duration-500 ${
+        action === "SELL_GREEN" ? "animate-pulse bg-success/20" : 
+        action === "SELL_RED" ? "animate-pulse bg-danger/20" : 
+        "bg-background"
+      }`}>
+        <div className="text-center space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-6xl md:text-8xl font-bold">
+              {action.startsWith("SELL") ? (
+                <span className={action === "SELL_GREEN" ? "text-success" : "text-danger"}>
+                  SELL
+                </span>
+              ) : (
+                <span className="text-primary">HOLD</span>
+              )}
+            </h1>
+            <div className="text-xl text-muted-foreground">
+              {stockData.symbol} • ${stockData.currentPrice.toFixed(2)}
+            </div>
+            <div className="text-lg">
+              Confidence: <span className="font-bold text-primary">{stockData.analysis.confidence}%</span>
+            </div>
+          </div>
+          
+          <div className="space-y-4 max-w-md mx-auto">
+            <Card className="p-4 bg-secondary/50">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Initial Price</div>
+                  <div className="font-bold">${initialPrice.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Current Price</div>
+                  <div className="font-bold">${stockData.currentPrice.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Investment</div>
+                  <div className="font-bold">${investmentAmount}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Target Profit</div>
+                  <div className="font-bold">${targetProfit}</div>
+                </div>
+              </div>
+            </Card>
+            
+            <div className="text-sm text-muted-foreground">
+              Next update in {countdown}s
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <Button 
+              onClick={handleSold}
+              size="lg"
+              className="bg-primary hover:bg-primary/90"
+            >
+              Sold
+            </Button>
+            <div className="text-sm text-muted-foreground max-w-md mx-auto">
+              {stockData.analysis.reasoning}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Normal Mode View
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -189,13 +317,23 @@ const Index = () => {
                     )}
                   </div>
                   {(investmentAmount || targetProfit) && (
-                    <Button
-                      size="sm"
-                      onClick={analyzeStock}
-                      disabled={loading}
-                    >
-                      Update Analysis
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={analyzeStock}
+                        disabled={loading}
+                      >
+                        Update Analysis
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleBought}
+                        disabled={loading || !investmentAmount || !targetProfit}
+                        className="bg-success hover:bg-success/90"
+                      >
+                        Bought
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
