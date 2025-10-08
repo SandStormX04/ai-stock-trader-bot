@@ -38,8 +38,9 @@ const Index = () => {
   const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [stockData, setStockData] = useState<StockData | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [autoRefresh, setAutoRefresh] = useState(true); // Always on
+  const [countdown, setCountdown] = useState(20); // 20 seconds
+  const [currentTradeId, setCurrentTradeId] = useState<string | null>(null);
   const [investmentAmount, setInvestmentAmount] = useState("");
   const [targetProfit, setTargetProfit] = useState("");
   const [percentLoss, setPercentLoss] = useState("");
@@ -58,7 +59,7 @@ const Index = () => {
     }
 
     setLoading(true);
-    setCountdown(boughtMode ? 10 : 60);
+    setCountdown(20);
     console.log("Analyzing stock:", symbol.toUpperCase());
 
     try {
@@ -93,7 +94,7 @@ const Index = () => {
     }
   };
 
-  const handleBought = () => {
+  const handleBought = async () => {
     if (!stockData || !investmentAmount || !targetProfit || !percentLoss) {
       toast({
         title: "Error",
@@ -102,37 +103,75 @@ const Index = () => {
       });
       return;
     }
+    
+    // Record the buy in database
+    const { data: tradeData, error: tradeError } = await supabase
+      .from('trades')
+      .insert({
+        symbol: stockData.symbol,
+        action: 'BUY',
+        buy_price: stockData.currentPrice,
+        investment_amount: parseFloat(investmentAmount),
+        target_profit: parseFloat(targetProfit),
+        percent_loss: parseFloat(percentLoss),
+        ai_recommendation: stockData.analysis.recommendation,
+        ai_confidence: stockData.analysis.confidence,
+        bought_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (tradeError) {
+      console.error("Error recording trade:", tradeError);
+    } else {
+      setCurrentTradeId(tradeData.id);
+    }
+
     setBoughtMode(true);
     setInitialPrice(stockData.currentPrice);
-    setAutoRefresh(true);
-    setCountdown(10);
+    setCountdown(20);
   };
 
-  const handleSold = () => {
+  const handleSold = async () => {
+    if (currentTradeId && stockData) {
+      const invested = parseFloat(investmentAmount);
+      const sharesOwned = Math.floor(invested / initialPrice);
+      const currentValue = sharesOwned * stockData.currentPrice;
+      const actualProfit = currentValue - invested;
+
+      // Update the trade record
+      await supabase
+        .from('trades')
+        .update({
+          action: 'SELL',
+          sell_price: stockData.currentPrice,
+          actual_profit: actualProfit,
+          sold_at: new Date().toISOString(),
+        })
+        .eq('id', currentTradeId);
+    }
+
     setBoughtMode(false);
-    setAutoRefresh(false);
     setInitialPrice(0);
+    setCurrentTradeId(null);
     toast({
       title: "Position Closed",
       description: "Stock sold successfully",
     });
   };
 
-  // Auto-refresh effect
+  // Auto-refresh effect - always on, 20 second intervals
   React.useEffect(() => {
     let intervalId: NodeJS.Timeout;
     let countdownId: NodeJS.Timeout;
 
-    if (autoRefresh && symbol && stockData) {
-      const refreshInterval = boughtMode ? 10000 : 60000;
-      const maxCountdown = boughtMode ? 10 : 60;
-      
+    if (symbol && stockData) {
       intervalId = setInterval(() => {
         analyzeStock();
-      }, refreshInterval);
+      }, 20000); // 20 seconds
 
       countdownId = setInterval(() => {
-        setCountdown((prev) => (prev > 0 ? prev - 1 : maxCountdown));
+        setCountdown((prev) => (prev > 0 ? prev - 1 : 20));
       }, 1000);
     }
 
@@ -140,7 +179,7 @@ const Index = () => {
       if (intervalId) clearInterval(intervalId);
       if (countdownId) clearInterval(countdownId);
     };
-  }, [autoRefresh, symbol, stockData, boughtMode]);
+  }, [symbol, stockData, boughtMode]);
 
   // Calculate if target profit is reached or loss limit hit
   const calculateAction = () => {
@@ -309,20 +348,10 @@ const Index = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant={autoRefresh ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setAutoRefresh(!autoRefresh)}
-                      className="gap-2"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} />
-                      Auto-Refresh {autoRefresh ? "ON" : "OFF"}
-                    </Button>
-                    {autoRefresh && (
-                      <span className="text-sm text-muted-foreground">
-                        Next update in {countdown}s
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                      <span>Auto-updating every 20s • Next in {countdown}s</span>
+                    </div>
                   </div>
                   {(investmentAmount || targetProfit || percentLoss) && (
                     <div className="flex gap-2">

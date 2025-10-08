@@ -12,6 +12,28 @@ Deno.serve(async (req) => {
     const { symbol, investmentAmount, targetProfit, boughtMode, initialPrice } = await req.json()
     console.log('Analyzing stock:', symbol, 'Investment:', investmentAmount, 'Target Profit:', targetProfit, 'Bought Mode:', boughtMode)
 
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2')
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Fetch recent trades for learning
+    console.log('Fetching recent trades for learning...')
+    const { data: recentTrades, error: tradesError } = await supabase
+      .from('trades')
+      .select('*')
+      .eq('symbol', symbol)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (tradesError) {
+      console.error('Error fetching trades:', tradesError)
+    } else {
+      console.log(`Found ${recentTrades?.length || 0} recent trades for ${symbol}`)
+    }
+
     // Fetch 1-minute interval candlestick data for the last day
     const period = '1d'
     const interval = '1m'
@@ -92,6 +114,31 @@ Investment Analysis:
       }
     }
 
+    // Build learning context from past trades
+    let learningContext = ''
+    if (recentTrades && recentTrades.length > 0) {
+      learningContext = `
+
+📊 HISTORICAL LEARNING DATA FOR ${symbol}:
+You have access to ${recentTrades.length} recent trades. Learn from these patterns:
+
+`
+      recentTrades.forEach((trade: any, idx: number) => {
+        learningContext += `Trade ${idx + 1} (${new Date(trade.bought_at).toLocaleDateString()}):
+  - Action: ${trade.action}
+  - Buy Price: $${trade.buy_price || 'N/A'}
+  - Sell Price: $${trade.sell_price || 'N/A'}
+  - Actual Profit: $${trade.actual_profit !== null ? trade.actual_profit.toFixed(2) : 'N/A'} ${trade.actual_profit !== null ? (trade.actual_profit >= 0 ? '(WIN ✓)' : '(LOSS ✗)') : ''}
+  - AI Recommendation: ${trade.ai_recommendation} (${trade.ai_confidence}% confidence)
+  - Investment: $${trade.investment_amount}
+  - Target Profit: $${trade.target_profit}
+
+`
+      })
+      learningContext += `IMPORTANT: Use these past trades to identify what worked and what didn't. Adjust your analysis accordingly.
+`
+    }
+
     const modeContext = boughtMode 
       ? `
 
@@ -103,7 +150,8 @@ The user has ALREADY INVESTED real money in this position. Your recommendation s
 Be VERY CAREFUL and CONSERVATIVE. Provide high confidence (80-95%) for clear signals.`
       : '';
 
-    const prompt = `You are a stock trading analyst. Analyze this 1-minute candlestick data for ${symbol}:
+    const prompt = `You are a stock trading analyst with learning capabilities. Analyze this 1-minute candlestick data for ${symbol}:
+${learningContext}
 
 Current Price: $${currentPrice.toFixed(2)}
 Price Change (last 30 min): ${priceChange.toFixed(2)}%${investmentContext}${modeContext}
