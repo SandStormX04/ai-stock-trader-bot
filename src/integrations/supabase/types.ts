@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           action: string
@@ -30,6 +51,7 @@ export type Database = {
           sold_at: string | null
           symbol: string
           target_profit: number | null
+          user_id: string | null
         }
         Insert: {
           action: string
@@ -46,6 +68,7 @@ export type Database = {
           sold_at?: string | null
           symbol: string
           target_profit?: number | null
+          user_id?: string | null
         }
         Update: {
           action?: string
@@ -62,6 +85,7 @@ export type Database = {
           sold_at?: string | null
           symbol?: string
           target_profit?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }

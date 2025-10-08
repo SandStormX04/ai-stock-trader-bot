@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as React from "react";
-import { Search, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, TrendingUp, TrendingDown, RefreshCw, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import StockChart from "@/components/StockChart";
 import AnalysisDisplay from "@/components/AnalysisDisplay";
+import type { User } from "@supabase/supabase-js";
 
 interface CandlestickData {
   time: string;
@@ -35,6 +37,8 @@ interface StockData {
 }
 
 const Index = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [username, setUsername] = useState("");
   const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [stockData, setStockData] = useState<StockData | null>(null);
@@ -46,7 +50,47 @@ const Index = () => {
   const [percentLoss, setPercentLoss] = useState("");
   const [boughtMode, setBoughtMode] = useState(false);
   const [initialPrice, setInitialPrice] = useState(0);
+  const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Auth check
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+        // Fetch username
+        supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", session.user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) setUsername(data.username);
+          });
+      }
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   const analyzeStock = async () => {
     if (!symbol.trim()) {
@@ -104,10 +148,11 @@ const Index = () => {
       return;
     }
     
-    // Record the buy in database
+    // Record the buy in database with user_id
     const { data: tradeData, error: tradeError } = await supabase
       .from('trades')
       .insert({
+        user_id: user?.id,
         symbol: stockData.symbol,
         action: 'BUY',
         buy_price: stockData.currentPrice,
@@ -280,13 +325,24 @@ const Index = () => {
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
-            AI Stock Trader
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Real-time candlestick analysis powered by AI
-          </p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+              AI Stock Trader
+            </h1>
+            <p className="text-muted-foreground text-lg mt-2">
+              Real-time candlestick analysis powered by AI • Welcome, {username}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSignOut}
+            className="gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
 
         {/* Search */}

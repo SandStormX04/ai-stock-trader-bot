@@ -12,19 +12,37 @@ Deno.serve(async (req) => {
     const { symbol, investmentAmount, targetProfit, boughtMode, initialPrice } = await req.json()
     console.log('Analyzing stock:', symbol, 'Investment:', investmentAmount, 'Target Profit:', targetProfit, 'Bought Mode:', boughtMode)
 
-    // Initialize Supabase client
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
     
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2')
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    })
 
-    // Fetch recent trades for learning
+    // Verify user is authenticated
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('Unauthorized')
+    }
+
+    console.log('User authenticated:', user.id)
+
+    // Fetch recent trades for learning (user-specific)
     console.log('Fetching recent trades for learning...')
     const { data: recentTrades, error: tradesError } = await supabase
       .from('trades')
       .select('*')
       .eq('symbol', symbol)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(10)
 
