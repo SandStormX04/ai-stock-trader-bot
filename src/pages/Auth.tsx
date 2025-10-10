@@ -29,6 +29,23 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Check if username is already taken
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username)
+        .maybeSingle();
+
+      if (existingProfiles) {
+        toast({
+          title: "Sign up failed",
+          description: "This display name is already taken. Please choose another one.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -43,8 +60,8 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: "Success!",
-        description: "Account created successfully. You can now log in.",
+        title: "Check your email!",
+        description: "We've sent you a verification link. Please verify your email to log in.",
       });
     } catch (error: any) {
       toast({

@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
       console.log(`Found ${recentTrades?.length || 0} recent trades for ${symbol}`)
     }
 
-    // Fetch 1-minute interval candlestick data for the last day
+    // Fetch 1-minute interval candlestick data for INTRADAY trading
+    // Using 1d period with 1m intervals for day trading analysis
     const period = '1d'
     const interval = '1m'
     
@@ -168,7 +169,7 @@ The user has ALREADY INVESTED real money in this position. Your recommendation s
 Be VERY CAREFUL and CONSERVATIVE. Provide high confidence (80-95%) for clear signals.`
       : '';
 
-    const prompt = `You are a stock trading analyst with learning capabilities. Analyze this 1-minute candlestick data for ${symbol}:
+    const prompt = `You are a DAY TRADING analyst with learning capabilities. This is INTRADAY analysis - all positions must be closed TODAY. Analyze this 1-minute candlestick data for ${symbol}:
 ${learningContext}
 
 Current Price: $${currentPrice.toFixed(2)}
@@ -177,11 +178,18 @@ Price Change (last 30 min): ${priceChange.toFixed(2)}%${investmentContext}${mode
 Recent Candles (last 30 minutes):
 ${recentCandles.map((c: any) => `Time: ${c.time}, O: ${c.open?.toFixed(2)}, H: ${c.high?.toFixed(2)}, L: ${c.low?.toFixed(2)}, C: ${c.close?.toFixed(2)}, Vol: ${c.volume}`).join('\n')}
 
-Based on this candlestick pattern analysis${investmentAmount && targetProfit ? ' and the investment goals' : ''}, provide:
-1. A clear ${boughtMode ? 'HOLD or SELL' : 'BUY, SELL, or HOLD'} recommendation${investmentAmount && targetProfit ? ' considering whether the target profit is realistic given current market conditions' : ''}
+⚠️ DAY TRADING RULES:
+- All positions MUST be closed before market close (4:00 PM ET)
+- Focus on SHORT-TERM price movements and momentum
+- Look for quick profit opportunities within the trading day
+- Avoid holding positions overnight
+- Consider time of day and remaining trading hours
+
+Based on this INTRADAY candlestick pattern analysis${investmentAmount && targetProfit ? ' and the investment goals' : ''}, provide:
+1. A clear ${boughtMode ? 'HOLD or SELL' : 'BUY, SELL, or HOLD'} recommendation FOR TODAY${investmentAmount && targetProfit ? ' considering whether the target profit is realistic within TODAY\'S trading session' : ''}
 2. Confidence level (${boughtMode ? '80-95% - be precise and confident' : '0-100%'})
-3. Key technical indicators you observe
-4. Brief reasoning (2-3 sentences)${investmentAmount && targetProfit ? ' including assessment of the target profit feasibility' : ''}
+3. Key technical indicators you observe (focus on short-term momentum, volume, support/resistance)
+4. Brief reasoning (2-3 sentences) including INTRADAY viability${investmentAmount && targetProfit ? ' and assessment of the target profit feasibility within today\'s session' : ''}
 
 Format your response as JSON:
 {
@@ -204,7 +212,7 @@ Format your response as JSON:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert stock trading analyst specializing in technical analysis of candlestick patterns.' 
+            content: 'You are an expert DAY TRADING analyst specializing in INTRADAY technical analysis of candlestick patterns. You focus on short-term price movements, momentum, and quick profit opportunities within a single trading day. You NEVER recommend holding positions overnight.' 
           },
           { role: 'user', content: prompt }
         ],
