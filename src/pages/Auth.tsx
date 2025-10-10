@@ -79,12 +79,25 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      // Check if email is verified
+      if (data.user && !data.user.email_confirmed_at) {
+        // Sign out the user immediately
+        await supabase.auth.signOut();
+        toast({
+          title: "Email not verified",
+          description: "Please verify your email address before signing in. Check your inbox for the verification link.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       navigate("/");
     } catch (error: any) {
