@@ -10,7 +10,7 @@ const Index = () => {
       if (!session) {
         navigate("/auth");
       } else {
-        navigate("/mode-selection");
+        navigate("/trade-helper");
       }
     });
   }, [navigate]);
