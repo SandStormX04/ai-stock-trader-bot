@@ -11,8 +11,6 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [tradeovateUsername, setTradeovateUsername] = useState("");
-  const [tradeovatePassword, setTradeovatePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -60,21 +58,6 @@ const Auth = () => {
       });
 
       if (error) throw error;
-
-      // Update profile with Tradeovate credentials
-      if (signUpData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            tradeovate_username: tradeovateUsername,
-            tradeovate_password: tradeovatePassword,
-          })
-          .eq('id', signUpData.user.id);
-
-        if (profileError) {
-          console.error('Error updating Tradeovate credentials:', profileError);
-        }
-      }
 
       toast({
         title: "Check your email!",
@@ -213,28 +196,6 @@ const Auth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="bg-secondary border-border"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Tradeovate Username</label>
-                <Input
-                  type="text"
-                  placeholder="Your Tradeovate username"
-                  value={tradeovateUsername}
-                  onChange={(e) => setTradeovateUsername(e.target.value)}
-                  required
-                  className="bg-secondary border-border"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Tradeovate Password</label>
-                <Input
-                  type="password"
-                  placeholder="Your Tradeovate password"
-                  value={tradeovatePassword}
-                  onChange={(e) => setTradeovatePassword(e.target.value)}
-                  required
                   className="bg-secondary border-border"
                 />
               </div>
