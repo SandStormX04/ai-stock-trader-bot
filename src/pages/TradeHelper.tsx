@@ -59,6 +59,8 @@ const Index = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
+      } else if (!session.user.email_confirmed_at) {
+        navigate("/");
       } else {
         setUser(session.user);
         // Fetch username
@@ -79,6 +81,8 @@ const Index = () => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         navigate("/auth");
+      } else if (!session.user.email_confirmed_at) {
+        navigate("/");
       } else {
         setUser(session.user);
       }

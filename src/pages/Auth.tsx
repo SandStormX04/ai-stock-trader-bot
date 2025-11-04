@@ -59,9 +59,25 @@ const Auth = () => {
 
       if (error) throw error;
 
+      // Send verification email via edge function
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (signUpData.user && !signUpData.user.email_confirmed_at) {
+          // User needs to verify email
+          await supabase.functions.invoke('send-verification-email', {
+            body: {
+              email,
+              verificationUrl: `${window.location.origin}/`,
+            },
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending verification email:", emailError);
+      }
+
       toast({
         title: "Check your email!",
-        description: "We've sent you a verification link. Please verify your email to log in.",
+        description: "We've sent you a verification link. Please click the link in your email to verify your account before signing in.",
       });
     } catch (error: any) {
       toast({
