@@ -5,6 +5,7 @@ import { Search, TrendingUp, TrendingDown, RefreshCw, LogOut } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import StockChart from "@/components/StockChart";
@@ -50,6 +51,7 @@ const Index = () => {
   const [percentLoss, setPercentLoss] = useState("");
   const [boughtMode, setBoughtMode] = useState(false);
   const [initialPrice, setInitialPrice] = useState(0);
+  const [exchange, setExchange] = useState<"NYSE" | "NSE">("NYSE");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -114,6 +116,7 @@ const Index = () => {
       const { data, error } = await supabase.functions.invoke("stock-analysis", {
         body: { 
           symbol: symbol.toUpperCase(),
+          exchange: exchange,
           investmentAmount: investmentAmount ? parseFloat(investmentAmount) : undefined,
           targetProfit: targetProfit ? parseFloat(targetProfit) : undefined,
           boughtMode: boughtMode,
@@ -349,28 +352,57 @@ const Index = () => {
           </Button>
         </div>
 
-        {/* Search */}
+        {/* Exchange Tabs and Search */}
         <Card className="p-6 border-primary/20">
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Enter stock symbol (e.g., AAPL, TSLA, MSFT)"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => e.key === "Enter" && analyzeStock()}
-                  className="pl-10 bg-secondary border-border"
-                />
+          <Tabs value={exchange} onValueChange={(value) => setExchange(value as "NYSE" | "NSE")} className="space-y-4">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="NYSE">NYSE (US)</TabsTrigger>
+              <TabsTrigger value="NSE">NSE (India)</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="NYSE" className="space-y-4 mt-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Enter NYSE symbol (e.g., AAPL, TSLA, MSFT)"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && analyzeStock()}
+                    className="pl-10 bg-secondary border-border"
+                  />
+                </div>
+                <Button
+                  onClick={analyzeStock}
+                  disabled={loading}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {loading ? "Analyzing..." : "Analyze"}
+                </Button>
               </div>
-              <Button
-                onClick={analyzeStock}
-                disabled={loading}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {loading ? "Analyzing..." : "Analyze"}
-              </Button>
-            </div>
+            </TabsContent>
+            
+            <TabsContent value="NSE" className="space-y-4 mt-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Enter NSE symbol (e.g., RELIANCE, TCS, INFY)"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && analyzeStock()}
+                    className="pl-10 bg-secondary border-border"
+                  />
+                </div>
+                <Button
+                  onClick={analyzeStock}
+                  disabled={loading}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {loading ? "Analyzing..." : "Analyze"}
+                </Button>
+              </div>
+            </TabsContent>
             
             {stockData && (
               <div className="space-y-4">
@@ -435,7 +467,7 @@ const Index = () => {
                 </div>
               </div>
             )}
-          </div>
+          </Tabs>
         </Card>
 
         {/* Results */}

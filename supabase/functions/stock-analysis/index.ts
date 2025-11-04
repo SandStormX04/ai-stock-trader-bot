@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { symbol, investmentAmount, targetProfit, boughtMode, initialPrice } = await req.json()
-    console.log('Analyzing stock:', symbol, 'Investment:', investmentAmount, 'Target Profit:', targetProfit, 'Bought Mode:', boughtMode)
+    const { symbol, exchange = 'NYSE', investmentAmount, targetProfit, boughtMode, initialPrice } = await req.json()
+    console.log('Analyzing stock:', symbol, 'Exchange:', exchange, 'Investment:', investmentAmount, 'Target Profit:', targetProfit, 'Bought Mode:', boughtMode)
 
     // Get authenticated user
     const authHeader = req.headers.get('Authorization')
@@ -57,7 +57,10 @@ Deno.serve(async (req) => {
     const period = '1d'
     const interval = '1m'
     
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${period}&interval=${interval}`
+    // Add exchange suffix for Indian stocks (NSE uses .NS)
+    const symbolWithExchange = exchange === 'NSE' ? `${symbol}.NS` : symbol
+    
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolWithExchange}?range=${period}&interval=${interval}`
     
     console.log('Fetching from Yahoo Finance:', yahooUrl)
     
