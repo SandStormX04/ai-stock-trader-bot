@@ -40,87 +40,74 @@ const StockChart = ({ data }: StockChartProps) => {
     switch (interval) {
       case "1min":
         dataPoints = 60;
-        return data.slice(-dataPoints).map((candle) => ({
-          time: new Date(candle.time).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          price: candle.close,
-          high: candle.high,
-          low: candle.low,
-        }));
+        break;
       case "1day":
-        dataPoints = 30;
-        return data.slice(-dataPoints).map((candle) => ({
-          time: new Date(candle.time).toLocaleDateString([], {
-            month: "short",
-            day: "numeric",
-          }),
-          price: candle.close,
-          high: candle.high,
-          low: candle.low,
-        }));
+        dataPoints = 24 * 60; // attempt last 24h (minute data if available)
+        break;
       case "1week":
-        dataPoints = 52;
-        return data.slice(-dataPoints).map((candle) => ({
-          time: new Date(candle.time).toLocaleDateString([], {
-            month: "short",
-            day: "numeric",
-          }),
-          price: candle.close,
-          high: candle.high,
-          low: candle.low,
-        }));
+        dataPoints = 7 * 24 * 60; // attempt last 7 days
+        break;
       case "1month":
-        dataPoints = 12;
-        return data.slice(-dataPoints).map((candle) => ({
-          time: new Date(candle.time).toLocaleDateString([], {
-            month: "short",
-            year: "numeric",
-          }),
-          price: candle.close,
-          high: candle.high,
-          low: candle.low,
-        }));
+        dataPoints = 30 * 24 * 60; // attempt last 30 days
+        break;
       case "1year":
-        dataPoints = 10;
-        return data.slice(-dataPoints).map((candle) => ({
-          time: new Date(candle.time).toLocaleDateString([], {
-            year: "numeric",
-          }),
-          price: candle.close,
-          high: candle.high,
-          low: candle.low,
-        }));
+        dataPoints = data.length; // show all available
+        break;
       default:
-        return data.slice(-60).map((candle) => ({
-          time: new Date(candle.time).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          price: candle.close,
-          high: candle.high,
-          low: candle.low,
-        }));
+        dataPoints = 60;
     }
+
+    return data.slice(-dataPoints).map((candle) => ({
+      timestamp: new Date(candle.time).getTime(),
+      price: candle.close,
+      high: candle.high,
+      low: candle.low,
+    }));
   };
 
   const chartData = getChartData();
+  const rangeMs = chartData.length ? chartData[chartData.length - 1].timestamp - chartData[0].timestamp : 0;
 
   const getChartTitle = () => {
     switch (interval) {
       case "1min":
-        return "1-Minute Chart (Last Hour)";
+        return "1-Minute Chart";
       case "1day":
-        return "Daily Chart (Last 30 Days)";
+        return "1-Day Chart";
       case "1week":
-        return "Weekly Chart (Last Year)";
+        return "1-Week Chart";
       case "1month":
-        return "Monthly Chart (Last Year)";
+        return "1-Month Chart";
       case "1year":
-        return "Yearly Chart";
+        return "1-Year Chart";
       default:
         return "Chart";
+    }
+  };
+
+  const formatTickLabel = (value: number) => {
+    const d = new Date(value);
+    const DAY = 24 * 60 * 60 * 1000;
+    switch (interval) {
+      case "1min":
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      case "1day":
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      case "1week":
+        return rangeMs < DAY
+          ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+      case "1month":
+        return rangeMs < DAY
+          ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : d.toLocaleDateString([], { month: "short", day: "numeric" });
+      case "1year":
+        if (rangeMs < 30 * DAY) {
+          return d.toLocaleDateString([], { month: "short", day: "numeric" });
+        }
+        return d.toLocaleDateString([], { month: "short", year: "numeric" });
+      default:
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
   };
 
@@ -145,9 +132,13 @@ const StockChart = ({ data }: StockChartProps) => {
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis
-            dataKey="time"
+            dataKey="timestamp"
+            type="number"
+            scale="time"
+            domain={["auto", "auto"]}
             stroke="hsl(var(--muted-foreground))"
             tick={{ fill: "hsl(var(--muted-foreground))" }}
+            tickFormatter={(value) => formatTickLabel(value as number)}
           />
           <YAxis
             stroke="hsl(var(--muted-foreground))"
@@ -161,6 +152,7 @@ const StockChart = ({ data }: StockChartProps) => {
               borderRadius: "8px",
             }}
             labelStyle={{ color: "hsl(var(--foreground))" }}
+            labelFormatter={(value) => formatTickLabel(value as number)}
           />
           <Line
             type="monotone"
