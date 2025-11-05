@@ -16,6 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { startOfDay, startOfWeek, startOfMonth, startOfYear } from "date-fns";
 
 interface CandlestickData {
   time: string;
@@ -33,40 +34,65 @@ interface StockChartProps {
 const StockChart = ({ data }: StockChartProps) => {
   const [interval, setInterval] = useState<string>("1min");
 
-  // Format data based on selected interval
+  // Format data based on selected interval using bucketing
   const getChartData = () => {
-    let dataPoints = 60;
+    const sorted = [...data].sort(
+      (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+    );
 
-    switch (interval) {
-      case "1min":
-        dataPoints = 60;
-        break;
-      case "1day":
-        dataPoints = 24 * 60; // attempt last 24h (minute data if available)
-        break;
-      case "1week":
-        dataPoints = 7 * 24 * 60; // attempt last 7 days
-        break;
-      case "1month":
-        dataPoints = 30 * 24 * 60; // attempt last 30 days
-        break;
-      case "1year":
-        dataPoints = data.length; // show all available
-        break;
-      default:
-        dataPoints = 60;
+    const getBucketStart = (d: Date) => {
+      switch (interval) {
+        case "1min": {
+          const m = new Date(d);
+          m.setSeconds(0, 0);
+          return m.getTime();
+        }
+        case "1day":
+          return startOfDay(d).getTime();
+        case "1week":
+          return startOfWeek(d, { weekStartsOn: 1 }).getTime();
+        case "1month":
+          return startOfMonth(d).getTime();
+        case "1year":
+          return startOfYear(d).getTime();
+        default:
+          return d.getTime();
+      }
+    };
+
+    const buckets = new Map<
+      number,
+      { timestamp: number; price: number; high: number; low: number; volume: number }
+    >();
+
+    for (const c of sorted) {
+      const d = new Date(c.time);
+      const key = getBucketStart(d);
+      const prev = buckets.get(key);
+      if (!prev) {
+        buckets.set(key, {
+          timestamp: key,
+          price: c.close,
+          high: c.high,
+          low: c.low,
+          volume: c.volume,
+        });
+      } else {
+        prev.high = Math.max(prev.high, c.high);
+        prev.low = Math.min(prev.low, c.low);
+        prev.price = c.close; // last close in bucket
+        prev.volume += c.volume;
+      }
     }
 
-    return data.slice(-dataPoints).map((candle) => ({
-      timestamp: new Date(candle.time).getTime(),
-      price: candle.close,
-      high: candle.high,
-      low: candle.low,
-    }));
+    const arr = Array.from(buckets.values());
+    if (interval === "1min") {
+      return arr.slice(-60); // last 60 minutes
+    }
+    return arr;
   };
 
   const chartData = getChartData();
-  const rangeMs = chartData.length ? chartData[chartData.length - 1].timestamp - chartData[0].timestamp : 0;
 
   const getChartTitle = () => {
     switch (interval) {
@@ -87,27 +113,19 @@ const StockChart = ({ data }: StockChartProps) => {
 
   const formatTickLabel = (value: number) => {
     const d = new Date(value);
-    const DAY = 24 * 60 * 60 * 1000;
     switch (interval) {
       case "1min":
         return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       case "1day":
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return d.toLocaleDateString([], { month: "short", day: "numeric" });
       case "1week":
-        return rangeMs < DAY
-          ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+        return d.toLocaleDateString([], { month: "short", day: "numeric" });
       case "1month":
-        return rangeMs < DAY
-          ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : d.toLocaleDateString([], { month: "short", day: "numeric" });
-      case "1year":
-        if (rangeMs < 30 * DAY) {
-          return d.toLocaleDateString([], { month: "short", day: "numeric" });
-        }
         return d.toLocaleDateString([], { month: "short", year: "numeric" });
+      case "1year":
+        return d.toLocaleDateString([], { year: "numeric" });
       default:
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return d.toLocaleString();
     }
   };
 
