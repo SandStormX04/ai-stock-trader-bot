@@ -85,11 +85,12 @@ const StockChart = ({ data }: StockChartProps) => {
       }
     }
 
-    const arr = Array.from(buckets.values());
+    const arr = Array.from(buckets.values()).sort((a, b) => a.timestamp - b.timestamp);
     if (interval === "1min") {
       return arr.slice(-60); // last 60 minutes
     }
-    return arr;
+    // Return last ~10 units for other intervals
+    return arr.slice(-10);
   };
 
   const chartData = getChartData();
