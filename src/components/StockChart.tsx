@@ -36,39 +36,73 @@ const StockChart = ({ data }: StockChartProps) => {
   // Format data based on selected interval
   const getChartData = () => {
     let dataPoints = 60;
-    let formatOptions: Intl.DateTimeFormatOptions = {
-      hour: "2-digit",
-      minute: "2-digit",
-    };
 
     switch (interval) {
       case "1min":
         dataPoints = 60;
-        break;
+        return data.slice(-dataPoints).map((candle) => ({
+          time: new Date(candle.time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          price: candle.close,
+          high: candle.high,
+          low: candle.low,
+        }));
       case "1day":
         dataPoints = 30;
-        formatOptions = { month: "short", day: "numeric" };
-        break;
+        return data.slice(-dataPoints).map((candle) => ({
+          time: new Date(candle.time).toLocaleDateString([], {
+            month: "short",
+            day: "numeric",
+          }),
+          price: candle.close,
+          high: candle.high,
+          low: candle.low,
+        }));
       case "1week":
         dataPoints = 52;
-        formatOptions = { month: "short", day: "numeric" };
-        break;
+        return data.slice(-dataPoints).map((candle) => ({
+          time: new Date(candle.time).toLocaleDateString([], {
+            month: "short",
+            day: "numeric",
+          }),
+          price: candle.close,
+          high: candle.high,
+          low: candle.low,
+        }));
       case "1month":
         dataPoints = 12;
-        formatOptions = { month: "short", year: "numeric" };
-        break;
+        return data.slice(-dataPoints).map((candle) => ({
+          time: new Date(candle.time).toLocaleDateString([], {
+            month: "short",
+            year: "numeric",
+          }),
+          price: candle.close,
+          high: candle.high,
+          low: candle.low,
+        }));
       case "1year":
         dataPoints = 10;
-        formatOptions = { year: "numeric" };
-        break;
+        return data.slice(-dataPoints).map((candle) => ({
+          time: new Date(candle.time).toLocaleDateString([], {
+            year: "numeric",
+          }),
+          price: candle.close,
+          high: candle.high,
+          low: candle.low,
+        }));
+      default:
+        return data.slice(-60).map((candle) => ({
+          time: new Date(candle.time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          price: candle.close,
+          high: candle.high,
+          low: candle.low,
+        }));
     }
-
-    return data.slice(-dataPoints).map((candle) => ({
-      time: new Date(candle.time).toLocaleDateString([], formatOptions),
-      price: candle.close,
-      high: candle.high,
-      low: candle.low,
-    }));
   };
 
   const chartData = getChartData();
