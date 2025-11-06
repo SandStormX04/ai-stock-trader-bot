@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { TrendingUp } from "lucide-react";
+import { Zap } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -16,29 +16,28 @@ interface StockPerformance {
   confidence: number;
 }
 
-const BestStocksChart = () => {
-  // Sample data - in a real app, this would come from an API analyzing multiple stocks
-  // Mix of large-cap, mid-cap, and high-growth stocks with strong profit potential
+const ShortTermStocksChart = () => {
+  // Day trading opportunities - mix of volatile stocks with intraday profit potential
   const topStocks: StockPerformance[] = [
-    { symbol: "PLTR", potentialProfit: 12.3, confidence: 82 },
-    { symbol: "SMCI", potentialProfit: 10.8, confidence: 76 },
-    { symbol: "COIN", potentialProfit: 9.5, confidence: 73 },
-    { symbol: "ARM", potentialProfit: 8.7, confidence: 79 },
-    { symbol: "AVGO", potentialProfit: 8.2, confidence: 85 },
-    { symbol: "NVDA", potentialProfit: 7.9, confidence: 88 },
-    { symbol: "CRWD", potentialProfit: 7.4, confidence: 74 },
-    { symbol: "NET", potentialProfit: 6.8, confidence: 71 },
+    { symbol: "TSLA", potentialProfit: 4.2, confidence: 79 },
+    { symbol: "AMD", potentialProfit: 3.8, confidence: 74 },
+    { symbol: "RIVN", potentialProfit: 3.5, confidence: 68 },
+    { symbol: "MARA", potentialProfit: 3.2, confidence: 71 },
+    { symbol: "SNAP", potentialProfit: 2.9, confidence: 66 },
+    { symbol: "DKNG", potentialProfit: 2.7, confidence: 73 },
+    { symbol: "HOOD", potentialProfit: 2.5, confidence: 69 },
+    { symbol: "SOFI", potentialProfit: 2.3, confidence: 67 },
   ];
 
   return (
     <Card className="p-6 border-primary/20">
       <CardHeader className="p-0 pb-4">
         <CardTitle className="flex items-center gap-2 text-xl">
-          <TrendingUp className="h-5 w-5 text-success" />
-          Long Term Profit
+          <Zap className="h-5 w-5 text-warning" />
+          Short Term Profit (Day Trading)
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          High-growth stocks for long-term investment opportunities
+          High-volatility stocks for intraday trading opportunities
         </p>
       </CardHeader>
       <CardContent className="p-0">
@@ -75,7 +74,7 @@ const BestStocksChart = () => {
             />
             <Bar
               dataKey="potentialProfit"
-              fill="hsl(var(--success))"
+              fill="hsl(var(--warning))"
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
@@ -85,7 +84,7 @@ const BestStocksChart = () => {
             <div key={stock.symbol} className="flex items-center justify-between text-sm">
               <span className="font-medium">{stock.symbol}</span>
               <div className="flex items-center gap-3">
-                <span className="text-success font-semibold">+{stock.potentialProfit}%</span>
+                <span className="text-warning font-semibold">+{stock.potentialProfit}%</span>
                 <span className="text-muted-foreground text-xs">
                   {stock.confidence}% confidence
                 </span>
@@ -98,4 +97,4 @@ const BestStocksChart = () => {
   );
 };
 
-export default BestStocksChart;
+export default ShortTermStocksChart;
