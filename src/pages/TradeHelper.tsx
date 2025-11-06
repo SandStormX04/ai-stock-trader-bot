@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import StockChart from "@/components/StockChart";
 import AnalysisDisplay from "@/components/AnalysisDisplay";
+import BestStocksChart from "@/components/BestStocksChart";
 import type { User } from "@supabase/supabase-js";
 
 interface CandlestickData {
@@ -473,37 +474,41 @@ const Index = () => {
         {/* Results */}
         {stockData && (
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Price Info */}
-            <Card className="p-6 border-primary/20">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold">{stockData.symbol}</h2>
-                  <div
-                    className={`flex items-center gap-1 ${
-                      stockData.priceChange >= 0 ? "text-success" : "text-danger"
-                    }`}
-                  >
-                    {stockData.priceChange >= 0 ? (
-                      <TrendingUp className="h-5 w-5" />
-                    ) : (
-                      <TrendingDown className="h-5 w-5" />
-                    )}
-                    <span className="font-semibold">
-                      {stockData.priceChange >= 0 ? "+" : ""}
-                      {stockData.priceChange.toFixed(2)}%
-                    </span>
+            {/* Left column - Price Info and Best Stocks */}
+            <div className="space-y-6">
+              <Card className="p-6 border-primary/20">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">{stockData.symbol}</h2>
+                    <div
+                      className={`flex items-center gap-1 ${
+                        stockData.priceChange >= 0 ? "text-success" : "text-danger"
+                      }`}
+                    >
+                      {stockData.priceChange >= 0 ? (
+                        <TrendingUp className="h-5 w-5" />
+                      ) : (
+                        <TrendingDown className="h-5 w-5" />
+                      )}
+                      <span className="font-semibold">
+                        {stockData.priceChange >= 0 ? "+" : ""}
+                        {stockData.priceChange.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-4xl font-bold">
+                    ${stockData.currentPrice.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Last updated: {new Date(stockData.timestamp).toLocaleTimeString()}
                   </div>
                 </div>
-                <div className="text-4xl font-bold">
-                  ${stockData.currentPrice.toFixed(2)}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Last updated: {new Date(stockData.timestamp).toLocaleTimeString()}
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* AI Analysis */}
+              <BestStocksChart />
+            </div>
+
+            {/* Right column - AI Analysis */}
             <AnalysisDisplay analysis={stockData.analysis} />
           </div>
         )}
