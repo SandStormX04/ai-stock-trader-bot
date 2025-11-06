@@ -18,12 +18,16 @@ interface StockPerformance {
 
 const BestStocksChart = () => {
   // Sample data - in a real app, this would come from an API analyzing multiple stocks
+  // Mix of large-cap, mid-cap, and high-growth stocks with strong profit potential
   const topStocks: StockPerformance[] = [
-    { symbol: "NVDA", potentialProfit: 8.5, confidence: 85 },
-    { symbol: "AAPL", potentialProfit: 6.2, confidence: 78 },
-    { symbol: "MSFT", potentialProfit: 5.8, confidence: 82 },
-    { symbol: "TSLA", potentialProfit: 7.3, confidence: 71 },
-    { symbol: "GOOGL", potentialProfit: 5.1, confidence: 80 },
+    { symbol: "PLTR", potentialProfit: 12.3, confidence: 82 },
+    { symbol: "SMCI", potentialProfit: 10.8, confidence: 76 },
+    { symbol: "COIN", potentialProfit: 9.5, confidence: 73 },
+    { symbol: "ARM", potentialProfit: 8.7, confidence: 79 },
+    { symbol: "AVGO", potentialProfit: 8.2, confidence: 85 },
+    { symbol: "NVDA", potentialProfit: 7.9, confidence: 88 },
+    { symbol: "CRWD", potentialProfit: 7.4, confidence: 74 },
+    { symbol: "NET", potentialProfit: 6.8, confidence: 71 },
   ];
 
   return (
@@ -31,14 +35,14 @@ const BestStocksChart = () => {
       <CardHeader className="p-0 pb-4">
         <CardTitle className="flex items-center gap-2 text-xl">
           <TrendingUp className="h-5 w-5 text-success" />
-          Best Profit Opportunities
+          Top NYSE Profit Opportunities
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Top stocks by potential profit % (AI predicted)
+          High-growth stocks ranked by AI-predicted profit potential
         </p>
       </CardHeader>
       <CardContent className="p-0">
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={350}>
           <BarChart data={topStocks} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
