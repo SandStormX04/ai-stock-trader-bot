@@ -3,13 +3,104 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Input validation function
+function validateStockInput(data: any): { 
+  valid: boolean; 
+  error?: string; 
+  sanitized?: {
+    symbol: string;
+    exchange: string;
+    investmentAmount?: number;
+    targetProfit?: number;
+    boughtMode?: boolean;
+    initialPrice?: number;
+  }
+} {
+  const { symbol, exchange, investmentAmount, targetProfit, boughtMode, initialPrice } = data;
+
+  // Validate symbol - required, alphanumeric only, max 10 chars
+  if (!symbol || typeof symbol !== 'string') {
+    return { valid: false, error: 'Stock symbol is required' };
+  }
+  const cleanSymbol = symbol.trim().toUpperCase();
+  if (!/^[A-Z]{1,10}$/.test(cleanSymbol)) {
+    return { valid: false, error: 'Invalid stock symbol format. Use 1-10 letters only.' };
+  }
+
+  // Validate exchange - optional, must be NYSE or NSE
+  const validExchanges = ['NYSE', 'NSE'];
+  const cleanExchange = (exchange || 'NYSE').toString().toUpperCase();
+  if (!validExchanges.includes(cleanExchange)) {
+    return { valid: false, error: 'Invalid exchange. Use NYSE or NSE.' };
+  }
+
+  // Validate numeric fields
+  let cleanInvestmentAmount: number | undefined;
+  if (investmentAmount !== undefined && investmentAmount !== null) {
+    cleanInvestmentAmount = Number(investmentAmount);
+    if (isNaN(cleanInvestmentAmount) || cleanInvestmentAmount <= 0 || cleanInvestmentAmount > 10000000) {
+      return { valid: false, error: 'Investment amount must be between 0 and 10,000,000' };
+    }
+  }
+
+  let cleanTargetProfit: number | undefined;
+  if (targetProfit !== undefined && targetProfit !== null) {
+    cleanTargetProfit = Number(targetProfit);
+    if (isNaN(cleanTargetProfit) || cleanTargetProfit <= 0 || cleanTargetProfit > 10000000) {
+      return { valid: false, error: 'Target profit must be between 0 and 10,000,000' };
+    }
+  }
+
+  let cleanInitialPrice: number | undefined;
+  if (initialPrice !== undefined && initialPrice !== null) {
+    cleanInitialPrice = Number(initialPrice);
+    if (isNaN(cleanInitialPrice) || cleanInitialPrice <= 0 || cleanInitialPrice > 1000000) {
+      return { valid: false, error: 'Initial price must be between 0 and 1,000,000' };
+    }
+  }
+
+  const cleanBoughtMode = boughtMode === true || boughtMode === 'true';
+
+  return {
+    valid: true,
+    sanitized: {
+      symbol: cleanSymbol,
+      exchange: cleanExchange,
+      investmentAmount: cleanInvestmentAmount,
+      targetProfit: cleanTargetProfit,
+      boughtMode: cleanBoughtMode,
+      initialPrice: cleanInitialPrice,
+    }
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { symbol, exchange = 'NYSE', investmentAmount, targetProfit, boughtMode, initialPrice } = await req.json()
+    // Parse and validate input
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const validation = validateStockInput(requestData);
+    if (!validation.valid) {
+      console.log('Input validation failed:', validation.error);
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { symbol, exchange, investmentAmount, targetProfit, boughtMode, initialPrice } = validation.sanitized!;
     console.log('Analyzing stock:', symbol, 'Exchange:', exchange, 'Investment:', investmentAmount, 'Target Profit:', targetProfit, 'Bought Mode:', boughtMode)
 
     // Get authenticated user
@@ -60,7 +151,7 @@ Deno.serve(async (req) => {
     // Add exchange suffix for Indian stocks (NSE uses .NS)
     const symbolWithExchange = exchange === 'NSE' ? `${symbol}.NS` : symbol
     
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolWithExchange}?range=${period}&interval=${interval}`
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbolWithExchange)}?range=${period}&interval=${interval}`
     
     console.log('Fetching from Yahoo Finance:', yahooUrl)
     
