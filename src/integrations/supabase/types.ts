@@ -51,7 +51,7 @@ export type Database = {
           sold_at: string | null
           symbol: string
           target_profit: number | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           action: string
@@ -68,7 +68,7 @@ export type Database = {
           sold_at?: string | null
           symbol: string
           target_profit?: number | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           action?: string
@@ -85,7 +85,7 @@ export type Database = {
           sold_at?: string | null
           symbol?: string
           target_profit?: number | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
